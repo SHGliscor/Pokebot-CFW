@@ -6,7 +6,7 @@ import socket
 import struct
 import time
 
-# CI retrigger marker after validator environment repair.
+# CI retrigger marker after validator + makerom environment repair.
 REQ_MAGIC = 0x5242524F  # ORBR
 RESP_MAGIC = 0x5342524F  # ORBS
 VERSION = 1
