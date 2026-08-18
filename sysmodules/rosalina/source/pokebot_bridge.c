@@ -15,6 +15,7 @@
 
 #include "csvc.h"
 #include "memory.h"
+#include "menu.h"
 #include "minisoc.h"
 #include "pokebot_bridge.h"
 
