@@ -22,9 +22,15 @@ jobs:
 
       - name: Install firmtool
         run: |
+          # The libctrpf 0.8.0 image is Debian bullseye and still carries the
+          # retired bullseye-backports source. Remove it before apt update.
+          sed -i '/bullseye-backports/d' /etc/apt/sources.list 2>/dev/null || true
+          if [ -d /etc/apt/sources.list.d ]; then
+            grep -rl 'bullseye-backports' /etc/apt/sources.list.d 2>/dev/null | xargs -r sed -i '/bullseye-backports/d'
+          fi
           apt-get update
           apt-get install -y python3-pip git
-          python3 -m pip install --break-system-packages git+https://github.com/TuxSH/firmtool.git
+          python3 -m pip install git+https://github.com/TuxSH/firmtool.git
 
       - name: Build boot.firm
         run: make -j2
