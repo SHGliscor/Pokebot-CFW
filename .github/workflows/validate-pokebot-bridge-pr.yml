@@ -1,0 +1,36 @@
+name: Validate Pokebot CFW bridge PR
+
+on:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'sysmodules/rosalina/include/pokebot_bridge.h'
+      - 'sysmodules/rosalina/source/pokebot_bridge*.c'
+      - 'tools/pokebot_cfw_probe_v0p1.py'
+      - '.github/workflows/build-pokebot-cfw.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: pablomk7/libctrpf:0.8.0
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install firmtool
+        run: |
+          apt-get update
+          apt-get install -y python3-pip git
+          python3 -m pip install --break-system-packages git+https://github.com/TuxSH/firmtool.git
+
+      - name: Build boot.firm
+        run: make -j2
+
+      - name: Upload boot.firm
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pokebot-CFW-v0p1-boot-firm
+          path: boot.firm
