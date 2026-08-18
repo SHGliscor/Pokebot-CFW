@@ -20,17 +20,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install firmtool
+      - name: Install build prerequisites
         run: |
-          # The libctrpf 0.8.0 image is Debian bullseye and still carries the
-          # retired bullseye-backports source. Remove it before apt update.
           sed -i '/bullseye-backports/d' /etc/apt/sources.list 2>/dev/null || true
           if [ -d /etc/apt/sources.list.d ]; then
             grep -rl 'bullseye-backports' /etc/apt/sources.list.d 2>/dev/null | xargs -r sed -i '/bullseye-backports/d'
           fi
           apt-get update
-          apt-get install -y python3-pip git
+          apt-get install -y python3-pip git build-essential
           python3 -m pip install git+https://github.com/TuxSH/firmtool.git
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Build makerom
+        run: |
+          git clone --depth 1 https://github.com/3DSGuy/Project_CTR.git /tmp/Project_CTR
+          make -C /tmp/Project_CTR/makerom deps
+          make -C /tmp/Project_CTR/makerom -j2
+          install -m 0755 /tmp/Project_CTR/makerom/bin/makerom /usr/local/bin/makerom
+          makerom -h >/dev/null 2>&1 || true
 
       - name: Build boot.firm
         run: make -j2
