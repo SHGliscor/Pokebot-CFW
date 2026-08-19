@@ -3,6 +3,8 @@ name: Build Pokebot CFW Input Bridge
 on:
   push:
     branches: [ pokebot-input-bridge-v0p1 ]
+  pull_request:
+    branches: [ pokebot-input-ci-v0p1 ]
   workflow_dispatch:
 
 jobs:
