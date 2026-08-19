@@ -2,9 +2,9 @@
  * Pokebot3DS HID-only controller backend.
  *
  * Uses the same HID hook routine as Luma InputRedirection, but with a private
- * remote-input buffer and without starting UDP/4950 or touching IR. This lets
- * the Pokebot bridge own standard buttons/touch/circle-pad independently while
- * legacy InputRedirection remains disabled.
+ * remote-input buffer and without starting UDP/4950 or touching IR. The HID
+ * hook is installed only while an authorised Pokebot pulse is active and is
+ * detached again on RELEASE_ALL so native 3DS controls own HID while idle.
  */
 
 #include <3ds.h>
@@ -115,11 +115,12 @@ static Result doHidPatch(Handle processHandle, bool enable)
         memcpy(g_hidPatchJumpLoc, g_hidOrigCode, sizeof(g_hidOrigCode));
     }
 
+    svcInvalidateEntireInstructionCache();
     svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, 0x00100000, totalSize);
     return 0;
 }
 
-void PokebotInput_ReleaseAll(void)
+static void writeNeutral(void)
 {
     u32 *phys = PA_FROM_VA_PTR(g_hidData);
     phys[5] = POKEBOT_INPUT_HID_NEUTRAL;
@@ -161,7 +162,7 @@ Result PokebotInput_Enable(void)
     if(inputRedirectionEnabled)
         return -10;
 
-    PokebotInput_ReleaseAll();
+    writeNeutral();
 
     svcKernelSetState(0x10000, 4);
 
@@ -182,7 +183,10 @@ Result PokebotInput_Enable(void)
 
 Result PokebotInput_Disable(void)
 {
-    PokebotInput_ReleaseAll();
+    // Always force neutral before removing the hook. Do not call
+    // PokebotInput_ReleaseAll() here because RELEASE_ALL itself delegates to
+    // this function to guarantee that idle state returns to native HID.
+    writeNeutral();
 
     if(!g_enabled)
         return 0;
@@ -202,4 +206,14 @@ Result PokebotInput_Disable(void)
         g_enabled = false;
 
     return res;
+}
+
+void PokebotInput_ReleaseAll(void)
+{
+    // RELEASE_ALL is the ownership boundary: neutralise remote input and then
+    // remove the Pokebot HID hook so physical/local controls are completely
+    // native whenever no authorised pulse is active. The bridge remains alive
+    // on UDP/4952; only HID ownership is released.
+    writeNeutral();
+    (void)PokebotInput_Disable();
 }
