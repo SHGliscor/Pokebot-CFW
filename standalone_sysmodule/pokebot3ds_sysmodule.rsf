@@ -1,0 +1,52 @@
+BasicInfo:
+  Title                   : "Pokebot3DS"
+  CompanyCode             : "00"
+  ProductCode             : pokebot3ds
+  Logo                    : None
+
+TitleInfo:
+  Category                : Base
+  UniqueId                : 0x0000F9 # 000401300000F902
+  Version                 : 1
+
+Option:
+  UseOnSD                 : false
+  FreeProductCode         : true
+  MediaFootPadding        : false
+  EnableCrypt             : false
+  EnableCompress          : true
+
+AccessControlInfo:
+  IdealProcessor                : 0
+  AffinityMask                  : 2
+  Priority                      : 24
+
+  MemoryType                    : Base
+  HandleTableSize               : 0x100
+  DisableDebug                  : false
+  EnableForceDebug              : false
+  CanWriteSharedPage            : true
+  CanUsePrivilegedPriority      : false
+  CanUseNonAlphabetAndNumber    : true
+  PermitMainFunctionArgument    : false
+  CanShareDeviceMemory          : true
+  RunnableOnSleep               : true
+  SpecialMemoryArrange          : false
+
+  ResourceLimitCategory         : Other
+  CoreVersion                   : 2
+  DescVersion                   : 2
+  ReleaseKernelMajor            : "02"
+  ReleaseKernelMinor            : "33"
+
+  SystemCallAccess:
+    Backdoor: 123
+    KernelSetState: 124
+
+  ServiceAccessControl:
+    - soc:U
+
+SystemControlInfo:
+  SaveDataSize: 0KB
+  RemasterVersion: 0
+  StackSize: 0x4000

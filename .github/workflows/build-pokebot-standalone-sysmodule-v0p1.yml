@@ -1,0 +1,84 @@
+name: Build Pokebot3DS Standalone Sysmodule v0p1
+
+on:
+  push:
+    branches: [ pokebot-standalone-sysmodule-v0p1 ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    env:
+      DEVKITPRO: /opt/devkitpro
+      DEVKITARM: /opt/devkitpro/devkitARM
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure toolchain
+        run: |
+          echo "/opt/devkitpro/devkitARM/bin" >> "$GITHUB_PATH"
+          echo "/opt/devkitpro/tools/bin" >> "$GITHUB_PATH"
+          echo "DEVKITPRO=/opt/devkitpro" >> "$GITHUB_ENV"
+          echo "DEVKITARM=/opt/devkitpro/devkitARM" >> "$GITHUB_ENV"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install makerom
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git build-essential
+          rm -rf /tmp/Project_CTR
+          git clone --depth 1 --branch makerom-v0.19.0 https://github.com/3DSGuy/Project_CTR.git /tmp/Project_CTR
+          make -C /tmp/Project_CTR/makerom deps
+          make -C /tmp/Project_CTR/makerom program
+          install -m 0755 /tmp/Project_CTR/makerom/bin/makerom /usr/local/bin/makerom
+
+      - name: Build external sysmodule
+        run: |
+          export PATH="$DEVKITARM/bin:$DEVKITPRO/tools/bin:$PATH"
+          make -C standalone_sysmodule clean
+          make -C standalone_sysmodule -j2
+
+      - name: Build Homebrew Launcher bootstrap
+        run: |
+          export PATH="$DEVKITARM/bin:$DEVKITPRO/tools/bin:$PATH"
+          make -C standalone_sysmodule/launcher clean
+          make -C standalone_sysmodule/launcher -j2
+
+      - name: Verify outputs
+        run: |
+          test -s standalone_sysmodule/000401300000F902.cxi
+          test -s standalone_sysmodule/launcher/Pokebot3DS-Sysmodule-Launcher.3dsx
+          sha256sum standalone_sysmodule/000401300000F902.cxi
+          sha256sum standalone_sysmodule/launcher/Pokebot3DS-Sysmodule-Launcher.3dsx
+
+      - name: Package hardware proof
+        run: |
+          rm -rf package
+          mkdir -p package/Pokebot3DS-Standalone-Sysmodule-v0p1/sd_card/luma/sysmodules
+          mkdir -p package/Pokebot3DS-Standalone-Sysmodule-v0p1/sd_card/3ds/Pokebot3DS-Sysmodule-Launcher
+          cp standalone_sysmodule/000401300000F902.cxi \
+             package/Pokebot3DS-Standalone-Sysmodule-v0p1/sd_card/luma/sysmodules/
+          cp standalone_sysmodule/launcher/Pokebot3DS-Sysmodule-Launcher.3dsx \
+             package/Pokebot3DS-Standalone-Sysmodule-v0p1/sd_card/3ds/Pokebot3DS-Sysmodule-Launcher/
+          cp standalone_sysmodule/tools/pokebot_sysmodule_probe_v0p1.py \
+             package/Pokebot3DS-Standalone-Sysmodule-v0p1/
+          cp standalone_sysmodule/README.md \
+             package/Pokebot3DS-Standalone-Sysmodule-v0p1/README.md
+          sha256sum standalone_sysmodule/000401300000F902.cxi \
+                    standalone_sysmodule/launcher/Pokebot3DS-Sysmodule-Launcher.3dsx \
+             > package/Pokebot3DS-Standalone-Sysmodule-v0p1/SHA256SUMS.txt
+
+      - name: Upload hardware proof package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pokebot3DS-Standalone-Sysmodule-v0p1
+          path: package/Pokebot3DS-Standalone-Sysmodule-v0p1
+          if-no-files-found: error
