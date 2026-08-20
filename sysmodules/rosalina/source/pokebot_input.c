@@ -3,8 +3,11 @@
  *
  * Uses the same HID hook routine as Luma InputRedirection, but with a private
  * remote-input buffer and without starting UDP/4950 or touching IR. The HID
- * hook is installed only while an authorised Pokebot pulse is active and is
- * detached again on RELEASE_ALL so native 3DS controls own HID while idle.
+ * hook is installed once when the experimental Pokebot controller first owns
+ * HID and remains installed between pulses. Neutral remote input already makes
+ * the shared hook pass physical/local controls through, so there is no need to
+ * patch and unpatch HID for every pulse. The hook is detached only by the
+ * explicit disable/bridge-shutdown path.
  */
 
 #include <3ds.h>
@@ -183,9 +186,9 @@ Result PokebotInput_Enable(void)
 
 Result PokebotInput_Disable(void)
 {
-    // Always force neutral before removing the hook. Do not call
-    // PokebotInput_ReleaseAll() here because RELEASE_ALL itself delegates to
-    // this function to guarantee that idle state returns to native HID.
+    // Explicit ownership teardown: neutralise the remote state first, then
+    // restore the original HID code. This is used for bridge shutdown/error
+    // teardown, not between normal controller pulses.
     writeNeutral();
 
     if(!g_enabled)
@@ -210,10 +213,10 @@ Result PokebotInput_Disable(void)
 
 void PokebotInput_ReleaseAll(void)
 {
-    // RELEASE_ALL is the ownership boundary: neutralise remote input and then
-    // remove the Pokebot HID hook so physical/local controls are completely
-    // native whenever no authorised pulse is active. The bridge remains alive
-    // on UDP/4952; only HID ownership is released.
+    // RELEASE_ALL means controller neutral, not ownership teardown. The shared
+    // HID hook already passes physical/local controls through whenever remote
+    // HID/touch/circle are neutral, matching the proven InputRedirection hook
+    // semantics. Keeping the hook installed avoids patch/unpatch churn on every
+    // pulse. PokebotInput_Disable() remains the explicit detach operation.
     writeNeutral();
-    (void)PokebotInput_Disable();
 }
