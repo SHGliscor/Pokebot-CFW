@@ -1,11 +1,9 @@
-# CI revision: v0p4 idle-safe acknowledged controller experiment
-name: Build Pokebot CFW Input Bridge v0p4
+# CI revision: v0p5 acknowledged touchscreen pulse experiment
+name: Build Pokebot CFW Input Bridge v0p5 Touch
 
 on:
   push:
-    branches: [ pokebot-input-bridge-v0p4 ]
-  pull_request:
-    branches: [ pokebot-input-ci-v0p2 ]
+    branches: [ pokebot-input-bridge-v0p5-touch ]
   workflow_dispatch:
 
 jobs:
@@ -31,12 +29,23 @@ jobs:
           echo "DEVKITARM=/opt/devkitpro/devkitARM" >> "$GITHUB_ENV"
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Apply v0p4 idle-safe bridge transform
+      - name: Apply proven v0p4 idle-safe bridge transform
         run: |
           python3 tools/experimental/apply_v0p4_idle_safe.py
           grep -n "socPoll(&pfd, 1, 50)" sysmodules/rosalina/source/pokebot_bridge.c
+
+      - name: Apply v0p5 acknowledged touchscreen transform
+        run: |
+          python3 tools/experimental/apply_v0p5_touch.py
+          grep -n "CMD_INPUT_TOUCH_PULSE" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "INPUT_CAP_TOUCH_PULSE" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "PokebotInput_SetTouchState" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "PokebotInput_SetTouchState" sysmodules/rosalina/source/pokebot_input.c
+          grep -n "touchState" sysmodules/rosalina/source/pokebot_input.c
           git diff --check
-          git diff -- sysmodules/rosalina/source/pokebot_bridge.c
+          git diff -- sysmodules/rosalina/include/pokebot_input.h \
+                      sysmodules/rosalina/source/pokebot_input.c \
+                      sysmodules/rosalina/source/pokebot_bridge.c
 
       - name: Install host build tools
         run: |
@@ -79,6 +88,6 @@ jobs:
       - name: Upload boot.firm
         uses: actions/upload-artifact@v4
         with:
-          name: Pokebot-CFW-input-bridge-v0p4-boot-firm
+          name: Pokebot-CFW-input-bridge-v0p5-touch-boot-firm
           path: boot.firm
           if-no-files-found: error
