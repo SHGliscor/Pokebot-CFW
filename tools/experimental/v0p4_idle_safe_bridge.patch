@@ -1,0 +1,59 @@
+diff --git a/sysmodules/rosalina/source/pokebot_bridge.c b/sysmodules/rosalina/source/pokebot_bridge.c
+--- a/sysmodules/rosalina/source/pokebot_bridge.c
++++ b/sysmodules/rosalina/source/pokebot_bridge.c
+@@ -722,8 +722,6 @@ MyThread *PokebotBridge_CreateThread(void)
+ 
+ void PokebotBridge_ThreadMain(void)
+ {
+-    PokebotInput_ReleaseAll();
+-
+     if(g_scratch == NULL)
+         g_scratch = mappableAlloc(SCRATCH_SIZE);
+ 
+@@ -770,16 +768,17 @@ void PokebotBridge_ThreadMain(void)
+ 
+         while(!preTerminationRequested)
+         {
+-            serviceInputPulse();
++            if(g_inputActive)
++                serviceInputPulse();
+ 
+             struct pollfd pfd;
+             pfd.fd = sock;
+             pfd.events = POLLIN;
+             pfd.revents = 0;
+ 
+-            // 10 ms wake interval bounds pulse-release timing without polling
+-            // game RAM. Network work remains event driven.
+-            int pollRes = socPoll(&pfd, 1, 10);
++            // Preserve the hardware-proven RAM bridge's 50 ms idle network
++            // cadence. Controller servicing is only active after a pulse.
++            int pollRes = socPoll(&pfd, 1, 50);
+             if(pollRes > 0 && (pfd.revents & POLLIN))
+             {
+                 u8 packet[128];
+@@ -799,20 +798,18 @@ void PokebotBridge_ThreadMain(void)
+ 
+         if(g_inputActive)
+             finishInputPulse(INPUT_STATE_ABORTED);
+-        else
+-            PokebotInput_ReleaseAll();
+ 
+-        PokebotInput_Disable();
++        if(PokebotInput_IsEnabled())
++            PokebotInput_Disable();
+         socClose(sock);
+         miniSocExit();
+ 
+         if(!preTerminationRequested)
+             svcSleepThread(250000000LL);
+     }
+ 
+-    PokebotInput_ReleaseAll();
+-    PokebotInput_Disable();
++    if(g_inputActive)
++        finishInputPulse(INPUT_STATE_ABORTED);
++    if(PokebotInput_IsEnabled())
++        PokebotInput_Disable();
+     MyThread_Exit();
+ }
