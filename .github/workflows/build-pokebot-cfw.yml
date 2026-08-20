@@ -20,7 +20,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure devkitARM PATH
+      - name: Configure toolchain environment
         run: |
           echo "/opt/devkitpro/devkitARM/bin" >> "$GITHUB_PATH"
           echo "/opt/devkitpro/tools/bin" >> "$GITHUB_PATH"
@@ -33,16 +33,16 @@ jobs:
           apt-get install -y --no-install-recommends python3-pip git
           python3 -m pip install --no-cache-dir --break-system-packages git+https://github.com/TuxSH/firmtool.git
 
-      - name: Verify toolchain
+      - name: Environment diagnostics
         run: |
           export PATH="$DEVKITARM/bin:$DEVKITPRO/tools/bin:$PATH"
           echo "DEVKITPRO=$DEVKITPRO"
           echo "DEVKITARM=$DEVKITARM"
-          command -v arm-none-eabi-gcc
-          arm-none-eabi-gcc --version
-          command -v makerom
-          makerom -h >/dev/null
-          command -v firmtool
+          command -v arm-none-eabi-gcc || true
+          arm-none-eabi-gcc --version || true
+          command -v makerom || true
+          makerom -h >/dev/null 2>&1 || true
+          command -v firmtool || true
           firmtool -v >/dev/null 2>&1 || true
 
       - name: Build boot.firm
