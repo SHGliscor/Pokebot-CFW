@@ -6,6 +6,10 @@ on:
     branches: [ pokebot-input-bridge-v0p5-touch ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -86,8 +90,76 @@ jobs:
           sha256sum boot.firm
 
       - name: Upload boot.firm
+        id: upload
         uses: actions/upload-artifact@v4
         with:
           name: Pokebot-CFW-input-bridge-v0p5-touch-boot-firm
           path: boot.firm
           if-no-files-found: error
+
+      - name: Publish successful build locator
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          payload = {
+              "state": "success",
+              "context": "pokebot-v0p5-touch-build",
+              "description": f"run={os.environ['RUN_ID']} artifact={os.environ['ARTIFACT_ID']}",
+              "target_url": os.environ["TARGET_URL"],
+          }
+          url = f"https://api.github.com/repos/{os.environ['REPO']}/statuses/{os.environ['SHA']}"
+          req = urllib.request.Request(
+              url,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                  "Content-Type": "application/json",
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(req) as response:
+              print(response.status, response.read().decode("utf-8"))
+          PY
+
+      - name: Publish failed build locator
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          payload = {
+              "state": "failure",
+              "context": "pokebot-v0p5-touch-build",
+              "description": f"run={os.environ['RUN_ID']} build failed",
+              "target_url": os.environ["TARGET_URL"],
+          }
+          url = f"https://api.github.com/repos/{os.environ['REPO']}/statuses/{os.environ['SHA']}"
+          req = urllib.request.Request(
+              url,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                  "Content-Type": "application/json",
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(req) as response:
+              print(response.status, response.read().decode("utf-8"))
+          PY
