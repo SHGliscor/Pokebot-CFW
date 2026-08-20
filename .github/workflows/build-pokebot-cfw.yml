@@ -1,9 +1,9 @@
-# CI revision: pinned makerom + safe-directory
-name: Build Pokebot CFW Input Bridge v0p2
+# CI revision: v0p3 acknowledged controller via proven InputRedirection backend
+name: Build Pokebot CFW Input Bridge v0p3
 
 on:
   push:
-    branches: [ pokebot-input-bridge-v0p2 ]
+    branches: [ pokebot-input-bridge-v0p3 ]
   workflow_dispatch:
 
 jobs:
@@ -70,6 +70,6 @@ jobs:
       - name: Upload boot.firm
         uses: actions/upload-artifact@v4
         with:
-          name: Pokebot-CFW-input-bridge-v0p2-boot-firm
+          name: Pokebot-CFW-input-bridge-v0p3-boot-firm
           path: boot.firm
           if-no-files-found: error
