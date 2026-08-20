@@ -1,5 +1,5 @@
-# CI revision: v0p5 acknowledged touchscreen pulse experiment
-name: Build Pokebot CFW Input Bridge v0p5 Touch
+# CI revision: v0p6 acknowledged touchscreen + latched HID experiment
+name: Build Pokebot CFW Input Bridge v0p6 Latched HID
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
           python3 tools/experimental/apply_v0p4_idle_safe.py
           grep -n "socPoll(&pfd, 1, 50)" sysmodules/rosalina/source/pokebot_bridge.c
 
-      - name: Apply v0p5 acknowledged touchscreen transform
+      - name: Apply proven v0p5 acknowledged touchscreen transform
         run: |
           python3 tools/experimental/apply_v0p5_touch.py
           grep -n "CMD_INPUT_TOUCH_PULSE" sysmodules/rosalina/source/pokebot_bridge.c
@@ -46,6 +46,15 @@ jobs:
           grep -n "PokebotInput_SetTouchState" sysmodules/rosalina/source/pokebot_bridge.c
           grep -n "PokebotInput_SetTouchState" sysmodules/rosalina/source/pokebot_input.c
           grep -n "touchState" sysmodules/rosalina/source/pokebot_input.c
+
+      - name: Apply v0p6 latched HID transform
+        run: |
+          python3 tools/experimental/apply_v0p6_latched_hid.py
+          grep -n "CMD_INPUT_HID_LATCH" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "INPUT_CAP_HID_LATCH" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "INPUT_RUNTIME_HID_LATCHED" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "INPUT_KIND_HID_LATCH" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "handleInputHidLatch" sysmodules/rosalina/source/pokebot_bridge.c
           git diff --check
           git diff -- sysmodules/rosalina/include/pokebot_input.h \
                       sysmodules/rosalina/source/pokebot_input.c \
@@ -93,7 +102,7 @@ jobs:
         id: upload
         uses: actions/upload-artifact@v4
         with:
-          name: Pokebot-CFW-input-bridge-v0p5-touch-boot-firm
+          name: Pokebot-CFW-input-bridge-v0p6-latched-hid-boot-firm
           path: boot.firm
           if-no-files-found: error
 
@@ -111,7 +120,7 @@ jobs:
           import json, os, urllib.request
           payload = {
               "state": "success",
-              "context": "pokebot-v0p5-touch-build",
+              "context": "pokebot-v0p6-latched-hid-build",
               "description": f"run={os.environ['RUN_ID']} artifact={os.environ['ARTIFACT_ID']}",
               "target_url": os.environ["TARGET_URL"],
           }
@@ -144,7 +153,7 @@ jobs:
           import json, os, urllib.request
           payload = {
               "state": "failure",
-              "context": "pokebot-v0p5-touch-build",
+              "context": "pokebot-v0p6-latched-hid-build",
               "description": f"run={os.environ['RUN_ID']} build failed",
               "target_url": os.environ["TARGET_URL"],
           }
