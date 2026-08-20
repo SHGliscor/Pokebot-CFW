@@ -9,37 +9,56 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: pablomk7/libctrpf:0.8.0
+      image: devkitpro/devkitarm:latest
+
+    env:
+      DEVKITPRO: /opt/devkitpro
+      DEVKITARM: /opt/devkitpro/devkitARM
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Configure devkitARM PATH
+        run: |
+          echo "/opt/devkitpro/devkitARM/bin" >> "$GITHUB_PATH"
+          echo "/opt/devkitpro/tools/bin" >> "$GITHUB_PATH"
+          echo "DEVKITPRO=/opt/devkitpro" >> "$GITHUB_ENV"
+          echo "DEVKITARM=/opt/devkitpro/devkitARM" >> "$GITHUB_ENV"
+
       - name: Install firmtool
         run: |
-          # libctrpf:0.8.0 is based on Debian Bullseye and still contains the
-          # retired bullseye-backports repository. Remove only that obsolete
-          # source before apt-get update; keep the DevkitPro/toolchain sources.
-          sed -i '/bullseye-backports/d' /etc/apt/sources.list 2>/dev/null || true
-          find /etc/apt/sources.list.d -maxdepth 1 -type f -exec sh -c '
-            if grep -q "bullseye-backports" "$1"; then rm -f "$1"; fi
-          ' _ {} \;
           apt-get update
           apt-get install -y --no-install-recommends python3-pip git
-          python3 -m pip install --no-cache-dir git+https://github.com/TuxSH/firmtool.git
+          python3 -m pip install --no-cache-dir --break-system-packages git+https://github.com/TuxSH/firmtool.git
 
       - name: Verify toolchain
         run: |
+          export PATH="$DEVKITARM/bin:$DEVKITPRO/tools/bin:$PATH"
+          echo "DEVKITPRO=$DEVKITPRO"
+          echo "DEVKITARM=$DEVKITARM"
+          command -v arm-none-eabi-gcc
           arm-none-eabi-gcc --version
+          command -v makerom
           makerom -h >/dev/null
+          command -v firmtool
           firmtool -v >/dev/null 2>&1 || true
 
       - name: Build boot.firm
-        run: make -j2
+        run: |
+          export PATH="$DEVKITARM/bin:$DEVKITPRO/tools/bin:$PATH"
+          make -j2
+
+      - name: Verify boot.firm
+        run: |
+          test -s boot.firm
+          ls -lh boot.firm
+          sha256sum boot.firm
 
       - name: Upload boot.firm
         uses: actions/upload-artifact@v4
         with:
           name: Pokebot-CFW-input-bridge-v0p2-boot-firm
           path: boot.firm
+          if-no-files-found: error
