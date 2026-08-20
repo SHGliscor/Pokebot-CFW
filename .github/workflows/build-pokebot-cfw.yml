@@ -31,10 +31,9 @@ jobs:
           echo "DEVKITARM=/opt/devkitpro/devkitARM" >> "$GITHUB_ENV"
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Apply v0p4 idle-safe bridge patch
+      - name: Apply v0p4 idle-safe bridge transform
         run: |
-          git apply --check tools/experimental/v0p4_idle_safe_bridge.patch
-          git apply tools/experimental/v0p4_idle_safe_bridge.patch
+          python3 tools/experimental/apply_v0p4_idle_safe.py
           grep -n "socPoll(&pfd, 1, 50)" sysmodules/rosalina/source/pokebot_bridge.c
           git diff --check
           git diff -- sysmodules/rosalina/source/pokebot_bridge.c
