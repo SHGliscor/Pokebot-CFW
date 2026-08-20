@@ -51,7 +51,7 @@ jobs:
           command -v arm-none-eabi-gcc
           arm-none-eabi-gcc --version
           command -v makerom
-          makerom -h >/dev/null
+          makerom -help >/dev/null 2>&1 || true
           command -v firmtool
           firmtool -v >/dev/null 2>&1 || true
 
