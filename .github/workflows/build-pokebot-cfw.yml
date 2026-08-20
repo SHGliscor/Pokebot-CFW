@@ -1,10 +1,8 @@
-name: Build Pokebot CFW Input Bridge
+name: Build Pokebot CFW Input Bridge v0p2
 
 on:
   push:
-    branches: [ pokebot-input-bridge-v0p1 ]
-  pull_request:
-    branches: [ pokebot-input-ci-v0p1 ]
+    branches: [ pokebot-input-bridge-v0p2 ]
   workflow_dispatch:
 
 jobs:
@@ -36,5 +34,5 @@ jobs:
       - name: Upload boot.firm
         uses: actions/upload-artifact@v4
         with:
-          name: Pokebot-CFW-input-bridge-v0p1-boot-firm
+          name: Pokebot-CFW-input-bridge-v0p2-boot-firm
           path: boot.firm
