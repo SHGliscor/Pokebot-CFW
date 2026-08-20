@@ -1,10 +1,11 @@
 /*
- * Pokebot3DS HID-only controller backend.
+ * Pokebot3DS acknowledged controller backend.
  *
- * This is intentionally separate from legacy Luma InputRedirection. It reuses
- * the proven HID hook mechanism but does not start the UDP/4950 service and
- * does not patch IR. Legacy InputRedirection must remain disabled while this
- * backend owns the HID hook.
+ * v0p3 deliberately stops maintaining a second private HID hook. Instead it
+ * owns the already-proven Nexus/Luma InputRedirection controller path
+ * internally and feeds neutral/button packets to that path from the 4952
+ * acknowledged bridge. This keeps the normal 4950 implementation intact while
+ * avoiding duplicate HID patch ownership.
  */
 #pragma once
 
