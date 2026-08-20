@@ -1,3 +1,4 @@
+# CI revision: pinned makerom + safe-directory
 name: Build Pokebot CFW Input Bridge v0p2
 
 on:
