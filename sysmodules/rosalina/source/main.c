@@ -46,6 +46,7 @@
 #include "minisoc.h"
 #include "draw.h"
 #include "bootdiag.h"
+#include "pokebot_bridge.h"
 #include "shell.h"
 
 #include "task_runner.h"
@@ -334,6 +335,7 @@ int main(void)
     MyThread *menuThread = menuCreateThread();
     MyThread *taskRunnerThread = taskRunnerCreateThread();
     MyThread *errDispThread = errDispCreateThread();
+    MyThread *pokebotBridgeThread = PokebotBridge_CreateThread();
     bootdiagCreateThread();
 
     if (R_FAILED(ServiceManager_Run(services, notifications, NULL)))
@@ -345,6 +347,7 @@ int main(void)
 
     MyThread_Join(taskRunnerThread, -1LL);
     MyThread_Join(errDispThread, -1LL);
+    MyThread_Join(pokebotBridgeThread, -1LL);
 
     return 0;
 }
