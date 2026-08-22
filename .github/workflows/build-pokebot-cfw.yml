@@ -1,9 +1,9 @@
-# CI revision: v0p6 acknowledged touchscreen + latched HID experiment
-name: Build Pokebot CFW Input Bridge v0p6 Latched HID
+# CI revision: v0p7 read-only top-framebuffer snapshot experiment
+name: Build Pokebot CFW Framebuffer Bridge v0p1
 
 on:
   push:
-    branches: [ pokebot-input-bridge-v0p5-touch ]
+    branches: [ pokebot-framebuffer-v0p1 ]
   workflow_dispatch:
 
 permissions:
@@ -47,7 +47,7 @@ jobs:
           grep -n "PokebotInput_SetTouchState" sysmodules/rosalina/source/pokebot_input.c
           grep -n "touchState" sysmodules/rosalina/source/pokebot_input.c
 
-      - name: Apply v0p6 latched HID transform
+      - name: Apply proven v0p6 latched HID transform
         run: |
           python3 tools/experimental/apply_v0p6_latched_hid.py
           grep -n "CMD_INPUT_HID_LATCH" sysmodules/rosalina/source/pokebot_bridge.c
@@ -55,6 +55,17 @@ jobs:
           grep -n "INPUT_RUNTIME_HID_LATCHED" sysmodules/rosalina/source/pokebot_bridge.c
           grep -n "INPUT_KIND_HID_LATCH" sysmodules/rosalina/source/pokebot_bridge.c
           grep -n "handleInputHidLatch" sysmodules/rosalina/source/pokebot_bridge.c
+
+      - name: Apply v0p7 read-only framebuffer snapshot transform
+        run: |
+          python3 tools/experimental/apply_v0p7_framebuffer.py
+          grep -n "CMD_FRAMEBUFFER_BEGIN" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "CMD_FRAMEBUFFER_READ" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "CMD_FRAMEBUFFER_END" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "Draw_ConvertFrameBufferLines" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "FB_FLAG_STABLE" sysmodules/rosalina/source/pokebot_bridge.c
+          python3 -m py_compile tools/pokebot_framebuffer_probe_v0p1.py
+          python3 tools/pokebot_framebuffer_probe_v0p1.py --self-test
           git diff --check
           git diff -- sysmodules/rosalina/include/pokebot_input.h \
                       sysmodules/rosalina/source/pokebot_input.c \
@@ -98,12 +109,14 @@ jobs:
           ls -lh boot.firm
           sha256sum boot.firm
 
-      - name: Upload boot.firm
+      - name: Upload framebuffer hardware-test bundle
         id: upload
         uses: actions/upload-artifact@v4
         with:
-          name: Pokebot-CFW-input-bridge-v0p6-latched-hid-boot-firm
-          path: boot.firm
+          name: Pokebot-CFW-framebuffer-v0p1-hardware-test
+          path: |
+            boot.firm
+            tools/pokebot_framebuffer_probe_v0p1.py
           if-no-files-found: error
 
       - name: Publish successful build locator
@@ -120,7 +133,7 @@ jobs:
           import json, os, urllib.request
           payload = {
               "state": "success",
-              "context": "pokebot-v0p6-latched-hid-build",
+              "context": "pokebot-v0p7-framebuffer-build",
               "description": f"run={os.environ['RUN_ID']} artifact={os.environ['ARTIFACT_ID']}",
               "target_url": os.environ["TARGET_URL"],
           }
@@ -153,7 +166,7 @@ jobs:
           import json, os, urllib.request
           payload = {
               "state": "failure",
-              "context": "pokebot-v0p6-latched-hid-build",
+              "context": "pokebot-v0p7-framebuffer-build",
               "description": f"run={os.environ['RUN_ID']} build failed",
               "target_url": os.environ["TARGET_URL"],
           }
