@@ -1,0 +1,99 @@
+name: Build Canonical Pokebot CFW XY
+
+on:
+  push:
+    branches: [ pokebot-canonical-xy-v0p1 ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    env:
+      DEVKITPRO: /opt/devkitpro
+      DEVKITARM: /opt/devkitpro/devkitARM
+      LUMA_COMMIT: d30ac8d1c665ed2a50dc30b291f7eb6b33e9890a
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure toolchain
+        run: |
+          echo "/opt/devkitpro/devkitARM/bin" >> "$GITHUB_PATH"
+          echo "/opt/devkitpro/tools/bin" >> "$GITHUB_PATH"
+          echo "DEVKITPRO=/opt/devkitpro" >> "$GITHUB_ENV"
+          echo "DEVKITARM=/opt/devkitpro/devkitARM" >> "$GITHUB_ENV"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Checkout exact official Luma base
+        run: |
+          rm -rf Luma3DS
+          git clone https://github.com/LumaTeam/Luma3DS.git Luma3DS
+          git -C Luma3DS checkout "$LUMA_COMMIT"
+          git -C Luma3DS submodule update --init --recursive
+          test "$(git -C Luma3DS rev-parse HEAD)" = "$LUMA_COMMIT"
+
+      - name: Restore canonical Pokebot patch set
+        run: |
+          rm -rf 3ds_sd/luma_source_patches
+          mkdir -p 3ds_sd/luma_source_patches
+          unzip -q canonical_patches_xy.zip -d 3ds_sd/luma_source_patches
+          ls -l 3ds_sd/luma_source_patches
+
+      - name: Apply Pokebot patch lineage
+        run: |
+          python3 3ds_sd/luma_source_patches/apply_ram_bridge.py
+          python3 3ds_sd/luma_source_patches/apply_ram_bridge_compile_fix.py
+          python3 3ds_sd/luma_source_patches/apply_additive_input_redirection.py
+          python3 3ds_sd/luma_source_patches/apply_pokebot_menu.py
+          python3 3ds_sd/luma_source_patches/apply_ack_controller_v0p5.py
+          python3 3ds_sd/luma_source_patches/apply_framebuffer_bridge.py
+          python3 3ds_sd/luma_source_patches/apply_n3ds_latency_fix_fb.py
+          grep -n "POKEBOT_X_TID" Luma3DS/sysmodules/rosalina/source/pokebot_ram_bridge.c
+          grep -n "POKEBOT_Y_TID" Luma3DS/sysmodules/rosalina/source/pokebot_ram_bridge.c
+          grep -n "kujira-1" Luma3DS/sysmodules/rosalina/source/pokebot_ram_bridge.c
+          grep -n "kujira-2" Luma3DS/sysmodules/rosalina/source/pokebot_ram_bridge.c
+          grep -n "POKEBOT_OR_TID" Luma3DS/sysmodules/rosalina/source/pokebot_ram_bridge.c
+          grep -n "POKEBOT_AS_TID" Luma3DS/sysmodules/rosalina/source/pokebot_ram_bridge.c
+          git -C Luma3DS diff --check
+
+      - name: Install host build tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends python3-pip git build-essential unzip
+          python3 -m pip install --no-cache-dir --break-system-packages git+https://github.com/TuxSH/firmtool.git
+
+      - name: Install pinned makerom
+        run: |
+          rm -rf /tmp/Project_CTR
+          git clone --depth 1 --branch makerom-v0.19.0 https://github.com/3DSGuy/Project_CTR.git /tmp/Project_CTR
+          make -C /tmp/Project_CTR/makerom deps
+          make -C /tmp/Project_CTR/makerom program
+          install -m 0755 /tmp/Project_CTR/makerom/bin/makerom /usr/local/bin/makerom
+
+      - name: Build canonical boot.firm
+        run: |
+          export PATH="$DEVKITARM/bin:$DEVKITPRO/tools/bin:$PATH"
+          make -C Luma3DS -j2
+          test -s Luma3DS/boot.firm
+          cp Luma3DS/boot.firm boot.firm
+
+      - name: Verify artifact
+        run: |
+          ls -lh boot.firm
+          sha256sum boot.firm | tee boot.firm.sha256
+          strings boot.firm | grep -F "Pokebot3DS-Luma-v0p6-n3ds-fb1"
+
+      - name: Upload canonical XY firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pokebot-CFW-canonical-xy-v0p1
+          path: |
+            boot.firm
+            boot.firm.sha256
+          if-no-files-found: error
