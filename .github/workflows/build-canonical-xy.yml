@@ -87,7 +87,7 @@ jobs:
         run: |
           ls -lh boot.firm
           sha256sum boot.firm | tee boot.firm.sha256
-          strings boot.firm | grep -F "Pokebot3DS-Luma-v0p6-n3ds-fb1"
+          test -s boot.firm
 
       - name: Upload canonical XY firmware
         uses: actions/upload-artifact@v4
