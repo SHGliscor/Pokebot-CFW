@@ -1,9 +1,9 @@
-# CI revision: v0p7 read-only top-framebuffer snapshot experiment
-name: Build Pokebot CFW Framebuffer Bridge v0p1
+# CI revision: XY GAME_INFO enablement on proven framebuffer bridge
+name: Build Pokebot CFW XY GAME_INFO v0p1
 
 on:
   push:
-    branches: [ pokebot-framebuffer-v0p1 ]
+    branches: [ pokebot-xy-gameinfo-v0p1 ]
   workflow_dispatch:
 
 permissions:
@@ -66,10 +66,30 @@ jobs:
           grep -n "FB_FLAG_STABLE" sysmodules/rosalina/source/pokebot_bridge.c
           python3 -m py_compile tools/pokebot_framebuffer_probe_v0p1.py
           python3 tools/pokebot_framebuffer_probe_v0p1.py --self-test
+
+      - name: Enable Pokemon X and Y GAME_INFO targets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('sysmodules/rosalina/source/pokebot_bridge.c')
+          s = p.read_text(encoding='utf-8')
+          old_defs = '#define OR_TITLE_ID 0x000400000011C400ULL\n#define AS_TITLE_ID 0x000400000011C500ULL'
+          new_defs = '#define X_TITLE_ID  0x0004000000055D00ULL\n#define Y_TITLE_ID  0x0004000000055E00ULL\n#define OR_TITLE_ID 0x000400000011C400ULL\n#define AS_TITLE_ID 0x000400000011C500ULL'
+          if old_defs not in s:
+              raise SystemExit('expected ORAS title definitions not found')
+          s = s.replace(old_defs, new_defs, 1)
+          old_gate = 'return titleId == OR_TITLE_ID || titleId == AS_TITLE_ID;'
+          new_gate = 'return titleId == X_TITLE_ID || titleId == Y_TITLE_ID ||\n           titleId == OR_TITLE_ID || titleId == AS_TITLE_ID;'
+          if old_gate not in s:
+              raise SystemExit('expected supported-game gate not found')
+          s = s.replace(old_gate, new_gate, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+          grep -n "X_TITLE_ID" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "Y_TITLE_ID" sysmodules/rosalina/source/pokebot_bridge.c
+          grep -n "return titleId == X_TITLE_ID" sysmodules/rosalina/source/pokebot_bridge.c
           git diff --check
-          git diff -- sysmodules/rosalina/include/pokebot_input.h \
-                      sysmodules/rosalina/source/pokebot_input.c \
-                      sysmodules/rosalina/source/pokebot_bridge.c
+          git diff -- sysmodules/rosalina/source/pokebot_bridge.c
 
       - name: Install host build tools
         run: |
@@ -109,11 +129,11 @@ jobs:
           ls -lh boot.firm
           sha256sum boot.firm
 
-      - name: Upload framebuffer hardware-test bundle
+      - name: Upload XY GAME_INFO hardware-test bundle
         id: upload
         uses: actions/upload-artifact@v4
         with:
-          name: Pokebot-CFW-framebuffer-v0p1-hardware-test
+          name: Pokebot-CFW-xy-gameinfo-v0p1-hardware-test
           path: |
             boot.firm
             tools/pokebot_framebuffer_probe_v0p1.py
@@ -133,7 +153,7 @@ jobs:
           import json, os, urllib.request
           payload = {
               "state": "success",
-              "context": "pokebot-v0p7-framebuffer-build",
+              "context": "pokebot-xy-gameinfo-v0p1-build",
               "description": f"run={os.environ['RUN_ID']} artifact={os.environ['ARTIFACT_ID']}",
               "target_url": os.environ["TARGET_URL"],
           }
@@ -166,7 +186,7 @@ jobs:
           import json, os, urllib.request
           payload = {
               "state": "failure",
-              "context": "pokebot-v0p7-framebuffer-build",
+              "context": "pokebot-xy-gameinfo-v0p1-build",
               "description": f"run={os.environ['RUN_ID']} build failed",
               "target_url": os.environ["TARGET_URL"],
           }
