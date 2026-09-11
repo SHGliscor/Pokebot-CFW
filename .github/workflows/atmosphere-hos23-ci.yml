@@ -1,0 +1,63 @@
+name: Atmosphere HOS23 experimental build
+
+on:
+  push:
+    branches:
+      - atmosphere-hos23-ci
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Fetch Atmosphere 23_support
+        run: |
+          git clone --recursive --branch 23_support --depth 1 https://github.com/Atmosphere-NX/Atmosphere.git atmosphere
+          cd atmosphere
+          git rev-parse HEAD
+
+      - name: Apply HOS 23 kernel ABI patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("atmosphere/libraries/libvapours/include/vapours/svc/svc_version.hpp")
+          s = p.read_text()
+          old = "constexpr inline u32 SupportedKernelMajorVersion = ConvertToSvcMajorVersion(22);"
+          new = "constexpr inline u32 SupportedKernelMajorVersion = ConvertToSvcMajorVersion(23);"
+          if old not in s:
+              raise SystemExit("Expected HOS22 SupportedKernelMajorVersion line not found")
+          p.write_text(s.replace(old, new, 1))
+          PY
+          grep -n "SupportedKernel" atmosphere/libraries/libvapours/include/vapours/svc/svc_version.hpp
+
+      - name: Build Atmosphere toolchain image
+        run: |
+          docker build -t atmosphere-hos23-builder atmosphere
+
+      - name: Build package3 and fusee
+        run: |
+          mkdir -p artifacts
+          docker run --rm \
+            -v "$PWD/atmosphere:/work" \
+            -v "$PWD/artifacts:/artifacts" \
+            -w /work \
+            atmosphere-hos23-builder \
+            bash -lc 'set -e; make -j2 dist-no-debug-nx_release; find out -type f -maxdepth 5 -print; cp out/nx_release/package3 /artifacts/package3; cp out/nx_release/fusee.bin /artifacts/fusee.bin; cp out/nx_release/atmosphere-*.zip /artifacts/ 2>/dev/null || true'
+
+      - name: Record build metadata
+        run: |
+          {
+            echo "Atmosphere branch: 23_support"
+            echo -n "Atmosphere commit: "
+            git -C atmosphere rev-parse HEAD
+            echo "Local patch: SupportedKernelMajorVersion 22 -> 23 (Kernel ABI 27.2)"
+            sha256sum artifacts/* || true
+          } > artifacts/BUILDINFO.txt
+          cat artifacts/BUILDINFO.txt
+
+      - name: Upload HOS23 build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Atmosphere-HOS23-experimental
+          path: artifacts/
+          if-no-files-found: error
